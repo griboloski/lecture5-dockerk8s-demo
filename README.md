@@ -131,3 +131,4 @@ The ReplicaSet controller continuously reconciles actual vs desired pod count. W
 | Alpine image bloated to 1.04GB with build tools | Only `libpq` needed; `psycopg2-binary` has a pre-built musllinux wheel |
 | `test_load_balancing.py` URL pointed to minikube port | Changed `SERVICE_URL` to `http://localhost/info` for Docker Desktop |
 | Kubernetes kubeconfig not created | Needed "Apply & Restart" in Docker Desktop settings |
+| Python emoji UnicodeEncodeError on Windows | Set `PYTHONIOENCODING=utf-8` |
