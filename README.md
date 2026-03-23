@@ -65,16 +65,6 @@ docker compose up -d
 # Login: System=PostgreSQL, Server=db, Username=taskuser, Password=taskpass, Database=taskdb
 ```
 
-All 4 services running after `docker compose up -d`:
-
-```
-NAME               IMAGE                STATUS
-lecture5-adminer   adminer:latest       Up  0.0.0.0:8080->8080/tcp
-lecture5-db        postgres:15-alpine   Up (healthy)   0.0.0.0:5432->5432/tcp
-lecture5-redis     redis:7-alpine       Up (healthy)   0.0.0.0:6379->6379/tcp
-lecture5-web       exercise5-web        Up  0.0.0.0:5000->5000/tcp
-```
-
 Adminer at http://localhost:8080 — tasks table structure in taskdb:
 
 ![Adminer tasks table](Screenshots/adminer-tasks.png)
@@ -124,8 +114,6 @@ task-app     slim      232MB
 
 **Fix:** Realized `psycopg2-binary` ships a pre-built `musllinux_1_1_x86_64` wheel for Alpine. Only `libpq` (runtime shared library) is needed. Removing the build toolchain reduced the image to **128MB**.
 
-**Lesson:** Always check if a package provides a binary wheel before adding build dependencies to Alpine images.
-
 ---
 
 ## Task 2a: Image Tagging and Registry
@@ -133,19 +121,12 @@ task-app     slim      232MB
 ### Commands Used
 
 ```bash
-# Build the image with version tag
 docker build -t task-app:v1.0 .
-
-# Tag for Docker Hub
 docker tag task-app:v1.0 griboloski/lecture5-webapp:v1.0
-
-# Push to Docker Hub
 docker push griboloski/lecture5-webapp:v1.0
 ```
 
 **Docker Hub image:** https://hub.docker.com/r/griboloski/lecture5-webapp
-
-The image is published at `griboloski/lecture5-webapp:v1.0` (Alpine-based, 128MB).
 
 ![Docker Hub](Screenshots/dockerhub.png)
 
@@ -155,15 +136,6 @@ The image is published at `griboloski/lecture5-webapp:v1.0` (Alpine-based, 128MB
 
 ### `docker compose logs web`
 
-```
-lecture5-web  | Database initialized successfully!
-lecture5-web  |  * Serving Flask app 'app'
-lecture5-web  |  * Debug mode: on
-lecture5-web  |  * Running on all addresses (0.0.0.0)
-lecture5-web  |  * Running on http://127.0.0.1:5000
-lecture5-web  |  * Running on http://172.18.0.5:5000
-```
-
 **What it shows:** Streams the stdout/stderr output from the `web` container — Flask startup messages, incoming HTTP request logs, errors, and debug output. Useful for diagnosing application issues without exec-ing into the container.
 
 ### `docker inspect lecture5-web`
@@ -171,7 +143,7 @@ lecture5-web  |  * Running on http://172.18.0.5:5000
 **What it shows:** Returns a detailed JSON object with the container's full configuration and runtime state, including:
 - Container ID, image SHA, creation time
 - Running state (PID, start time, exit code)
-- Network settings (IP address: `172.18.0.5`, MAC address, connected networks)
+- Network settings (IP address, MAC address, connected networks)
 - Volume mounts (e.g., `app.py` and `templates/` mounted read-only)
 - Environment variables (DB_HOST, DB_USER, REDIS_HOST, etc.)
 - Restart policy (`unless-stopped`)
@@ -180,14 +152,6 @@ lecture5-web  |  * Running on http://172.18.0.5:5000
 Useful for debugging networking issues or verifying configuration is applied correctly.
 
 ### `docker stats`
-
-```
-NAME               CPU %    MEM USAGE / LIMIT     NET I/O           BLOCK I/O
-lecture5-adminer   0.01%    8.457MiB / 7.674GiB   1.9kB / 126B      0B / 0B
-lecture5-web       0.20%    56.97MiB / 7.674GiB   3.7kB / 3.38kB    0B / 311kB
-lecture5-db        0.03%    30.91MiB / 7.674GiB   5.33kB / 2.91kB   0B / 52.4MB
-lecture5-redis     0.72%    3.266MiB / 7.674GiB   2.12kB / 126B     0B / 0B
-```
 
 **What it shows:** A live, updating table of real-time resource usage for all running containers: CPU%, memory usage vs limit, network I/O (bytes sent/received), and block I/O (disk reads/writes). Useful for identifying resource-hungry containers or memory leaks.
 
@@ -204,15 +168,6 @@ kubectl apply -f k8s-web.yaml
 ```
 
 `k8s-web.yaml` was updated to use `griboloski/lecture5-webapp:v1.0` (our Docker Hub image).
-
-### Result
-
-```
-NAME                   TYPE           CLUSTER-IP       EXTERNAL-IP   PORT(S)
-db                     ClusterIP      10.109.190.243   <none>        5432/TCP
-lecture5-web-service   LoadBalancer   10.101.208.84    localhost     80:32057/TCP
-redis                  ClusterIP      10.100.229.134   <none>        6379/TCP
-```
 
 App accessible at `http://localhost` (port 80 via LoadBalancer, Docker Desktop assigns `localhost` as external IP).
 
@@ -233,51 +188,6 @@ PYTHONIOENCODING=utf-8 python test_load_balancing.py
 
 ### Load Balancing Test Output
 
-```
-Testing load balancing across pods...
-Service URL: http://localhost/info
-Making 20 requests...
-
-Request  1: Served by lecture5-web-7f867c76d-wtstl
-Request  2: Served by lecture5-web-7f867c76d-wtstl
-Request  3: Served by lecture5-web-7f867c76d-ss8pw
-Request  4: Served by lecture5-web-7f867c76d-bnn58
-Request  5: Served by lecture5-web-7f867c76d-ss8pw
-Request  6: Served by lecture5-web-7f867c76d-qlvp5
-Request  7: Served by lecture5-web-7f867c76d-qlvp5
-Request  8: Served by lecture5-web-7f867c76d-qlvp5
-Request  9: Served by lecture5-web-7f867c76d-qlvp5
-Request 10: Served by lecture5-web-7f867c76d-ss8pw
-Request 11: Served by lecture5-web-7f867c76d-tpsh2
-Request 12: Served by lecture5-web-7f867c76d-wtstl
-Request 13: Served by lecture5-web-7f867c76d-tpsh2
-Request 14: Served by lecture5-web-7f867c76d-tpsh2
-Request 15: Served by lecture5-web-7f867c76d-tpsh2
-Request 16: Served by lecture5-web-7f867c76d-bnn58
-Request 17: Served by lecture5-web-7f867c76d-qlvp5
-Request 18: Served by lecture5-web-7f867c76d-bnn58
-Request 19: Served by lecture5-web-7f867c76d-qlvp5
-Request 20: Served by lecture5-web-7f867c76d-qlvp5
-
-============================================================
-LOAD BALANCING RESULTS
-============================================================
-
-Total successful requests: 20
-Number of unique pods serving requests: 5
-
-lecture5-web-7f867c76d-qlvp5:  7 requests ( 35.0%) |||||||
-lecture5-web-7f867c76d-tpsh2:  4 requests ( 20.0%) ||||
-lecture5-web-7f867c76d-wtstl:  3 requests ( 15.0%) |||
-lecture5-web-7f867c76d-ss8pw:  3 requests ( 15.0%) |||
-lecture5-web-7f867c76d-bnn58:  3 requests ( 15.0%) |||
-
-============================================================
-SUCCESS: Load balancing is working!
-   Traffic distributed across 5 pods
-============================================================
-```
-
 ![Load balancing test](Screenshots/load-balancing.png)
 
 ### How Kubernetes Distributes Traffic
@@ -288,18 +198,7 @@ Kubernetes distributes traffic using a **Service** object (`lecture5-web-service
 
 ## Task 3c: Self-Healing
 
-### Commands and Output
-
-**Before deletion (5 pods running):**
-
-```
-NAME                           READY   STATUS    RESTARTS   AGE
-lecture5-web-7f867c76d-7tcr9   1/1     Running   0          28m
-lecture5-web-7f867c76d-mzw5z   1/1     Running   0          27m
-lecture5-web-7f867c76d-ss8pw   1/1     Running   0          28m
-lecture5-web-7f867c76d-tpsh2   1/1     Running   0          28m
-lecture5-web-7f867c76d-wtstl   1/1     Running   0          28m
-```
+**Before deletion** (5 pods running):
 
 ![Before deletion](Screenshots/self-healing-before.png)
 
@@ -308,33 +207,15 @@ lecture5-web-7f867c76d-wtstl   1/1     Running   0          28m
 kubectl delete pod lecture5-web-7f867c76d-7tcr9
 ```
 
-**During/after healing — replacement pod `qlvp5` already Running at 17s:**
-
-```
-NAME                           READY   STATUS    RESTARTS   AGE
-lecture5-web-7f867c76d-mzw5z   1/1     Running   0          28m
-lecture5-web-7f867c76d-qlvp5   1/1     Running   0          17s   <- NEW replacement pod
-lecture5-web-7f867c76d-ss8pw   1/1     Running   0          29m
-lecture5-web-7f867c76d-tpsh2   1/1     Running   0          29m
-lecture5-web-7f867c76d-wtstl   1/1     Running   0          29m
-```
+**During healing** — replacement pod `qlvp5` already Running at 17s:
 
 ![During healing](Screenshots/self-healing-during.png)
 
 **Fully recovered:**
 
-```
-NAME                           READY   STATUS    RESTARTS   AGE
-lecture5-web-7f867c76d-mzw5z   1/1     Running   0          29m
-lecture5-web-7f867c76d-qlvp5   1/1     Running   0          84s
-lecture5-web-7f867c76d-ss8pw   1/1     Running   0          30m
-lecture5-web-7f867c76d-tpsh2   1/1     Running   0          30m
-lecture5-web-7f867c76d-wtstl   1/1     Running   0          31m
-```
-
 ![After healing](Screenshots/self-healing-after.png)
 
-Pod `7tcr9` was replaced by `qlvp5` within **17 seconds**. The deployment stayed at 5 replicas throughout with zero manual intervention.
+Pod `7tcr9` was replaced by `qlvp5` within seconds. The deployment stayed at 5 replicas throughout with zero manual intervention.
 
 ### Why Self-Healing is Important
 
