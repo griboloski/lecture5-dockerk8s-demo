@@ -75,7 +75,9 @@ lecture5-redis     redis:7-alpine       Up (healthy)   0.0.0.0:6379->6379/tcp
 lecture5-web       exercise5-web        Up  0.0.0.0:5000->5000/tcp
 ```
 
-**Screenshot placeholder:** Adminer accessible at http://localhost:8080, tasks table visible after login with taskuser/taskpass/taskdb.
+Adminer at http://localhost:8080 — tasks table structure in taskdb:
+
+![Adminer tasks table](Screenshots/adminer-tasks.png)
 
 ---
 
@@ -145,7 +147,7 @@ docker push griboloski/lecture5-webapp:v1.0
 
 The image is published at `griboloski/lecture5-webapp:v1.0` (Alpine-based, 128MB).
 
-**Screenshot placeholder:** Docker Hub page showing `griboloski/lecture5-webapp` with tag `v1.0`.
+![Docker Hub](Screenshots/dockerhub.png)
 
 ---
 
@@ -206,13 +208,6 @@ kubectl apply -f k8s-web.yaml
 ### Result
 
 ```
-NAME                           READY   STATUS    RESTARTS   AGE
-lecture5-web-7f867c76d-5rlqn   1/1     Running   0          29s
-lecture5-web-7f867c76d-7tcr9   1/1     Running   0          29s
-lecture5-web-7f867c76d-wtstl   1/1     Running   0          29s
-postgres-5695fbfd64-lcrxk      1/1     Running   0          30s
-redis-57566c54f6-lr6rz         1/1     Running   0          30s
-
 NAME                   TYPE           CLUSTER-IP       EXTERNAL-IP   PORT(S)
 db                     ClusterIP      10.109.190.243   <none>        5432/TCP
 lecture5-web-service   LoadBalancer   10.101.208.84    localhost     80:32057/TCP
@@ -221,7 +216,9 @@ redis                  ClusterIP      10.100.229.134   <none>        6379/TCP
 
 App accessible at `http://localhost` (port 80 via LoadBalancer, Docker Desktop assigns `localhost` as external IP).
 
-**Screenshot placeholder:** Browser showing app at http://localhost + `kubectl get pods` output.
+![kubectl get pods](Screenshots/kuberctl-pods.png)
+
+![App in browser](Screenshots/app-browser.png)
 
 ---
 
@@ -241,26 +238,26 @@ Testing load balancing across pods...
 Service URL: http://localhost/info
 Making 20 requests...
 
-Request  1: Served by lecture5-web-7f867c76d-ss8pw
-Request  2: Served by lecture5-web-7f867c76d-ss8pw
-Request  3: Served by lecture5-web-7f867c76d-wtstl
-Request  4: Served by lecture5-web-7f867c76d-wtstl
-Request  5: Served by lecture5-web-7f867c76d-wtstl
-Request  6: Served by lecture5-web-7f867c76d-5rlqn
-Request  7: Served by lecture5-web-7f867c76d-7tcr9
-Request  8: Served by lecture5-web-7f867c76d-7tcr9
-Request  9: Served by lecture5-web-7f867c76d-5rlqn
-Request 10: Served by lecture5-web-7f867c76d-tpsh2
-Request 11: Served by lecture5-web-7f867c76d-ss8pw
-Request 12: Served by lecture5-web-7f867c76d-5rlqn
-Request 13: Served by lecture5-web-7f867c76d-wtstl
-Request 14: Served by lecture5-web-7f867c76d-ss8pw
-Request 15: Served by lecture5-web-7f867c76d-ss8pw
-Request 16: Served by lecture5-web-7f867c76d-5rlqn
-Request 17: Served by lecture5-web-7f867c76d-wtstl
-Request 18: Served by lecture5-web-7f867c76d-tpsh2
-Request 19: Served by lecture5-web-7f867c76d-5rlqn
-Request 20: Served by lecture5-web-7f867c76d-5rlqn
+Request  1: Served by lecture5-web-7f867c76d-wtstl
+Request  2: Served by lecture5-web-7f867c76d-wtstl
+Request  3: Served by lecture5-web-7f867c76d-ss8pw
+Request  4: Served by lecture5-web-7f867c76d-bnn58
+Request  5: Served by lecture5-web-7f867c76d-ss8pw
+Request  6: Served by lecture5-web-7f867c76d-qlvp5
+Request  7: Served by lecture5-web-7f867c76d-qlvp5
+Request  8: Served by lecture5-web-7f867c76d-qlvp5
+Request  9: Served by lecture5-web-7f867c76d-qlvp5
+Request 10: Served by lecture5-web-7f867c76d-ss8pw
+Request 11: Served by lecture5-web-7f867c76d-tpsh2
+Request 12: Served by lecture5-web-7f867c76d-wtstl
+Request 13: Served by lecture5-web-7f867c76d-tpsh2
+Request 14: Served by lecture5-web-7f867c76d-tpsh2
+Request 15: Served by lecture5-web-7f867c76d-tpsh2
+Request 16: Served by lecture5-web-7f867c76d-bnn58
+Request 17: Served by lecture5-web-7f867c76d-qlvp5
+Request 18: Served by lecture5-web-7f867c76d-bnn58
+Request 19: Served by lecture5-web-7f867c76d-qlvp5
+Request 20: Served by lecture5-web-7f867c76d-qlvp5
 
 ============================================================
 LOAD BALANCING RESULTS
@@ -269,17 +266,19 @@ LOAD BALANCING RESULTS
 Total successful requests: 20
 Number of unique pods serving requests: 5
 
-lecture5-web-7f867c76d-5rlqn:  6 requests ( 30.0%) ||||||
-lecture5-web-7f867c76d-ss8pw:  5 requests ( 25.0%) |||||
-lecture5-web-7f867c76d-wtstl:  5 requests ( 25.0%) |||||
-lecture5-web-7f867c76d-7tcr9:  2 requests ( 10.0%) ||
-lecture5-web-7f867c76d-tpsh2:  2 requests ( 10.0%) ||
+lecture5-web-7f867c76d-qlvp5:  7 requests ( 35.0%) |||||||
+lecture5-web-7f867c76d-tpsh2:  4 requests ( 20.0%) ||||
+lecture5-web-7f867c76d-wtstl:  3 requests ( 15.0%) |||
+lecture5-web-7f867c76d-ss8pw:  3 requests ( 15.0%) |||
+lecture5-web-7f867c76d-bnn58:  3 requests ( 15.0%) |||
 
 ============================================================
 SUCCESS: Load balancing is working!
    Traffic distributed across 5 pods
 ============================================================
 ```
+
+![Load balancing test](Screenshots/load-balancing.png)
 
 ### How Kubernetes Distributes Traffic
 
@@ -292,41 +291,50 @@ Kubernetes distributes traffic using a **Service** object (`lecture5-web-service
 ### Commands and Output
 
 **Before deletion (5 pods running):**
+
 ```
 NAME                           READY   STATUS    RESTARTS   AGE
-lecture5-web-7f867c76d-5rlqn   1/1     Running   0          98s
-lecture5-web-7f867c76d-7tcr9   1/1     Running   0          98s
-lecture5-web-7f867c76d-ss8pw   1/1     Running   0          59s
-lecture5-web-7f867c76d-tpsh2   1/1     Running   0          59s
-lecture5-web-7f867c76d-wtstl   1/1     Running   0          98s
+lecture5-web-7f867c76d-7tcr9   1/1     Running   0          28m
+lecture5-web-7f867c76d-mzw5z   1/1     Running   0          27m
+lecture5-web-7f867c76d-ss8pw   1/1     Running   0          28m
+lecture5-web-7f867c76d-tpsh2   1/1     Running   0          28m
+lecture5-web-7f867c76d-wtstl   1/1     Running   0          28m
 ```
+
+![Before deletion](Screenshots/self-healing-before.png)
 
 **Delete a pod:**
 ```bash
-kubectl delete pod lecture5-web-7f867c76d-5rlqn
+kubectl delete pod lecture5-web-7f867c76d-7tcr9
 ```
 
-**During healing (~2 seconds after deletion):**
+**During/after healing — replacement pod `qlvp5` already Running at 17s:**
+
 ```
 NAME                           READY   STATUS    RESTARTS   AGE
-lecture5-web-7f867c76d-7tcr9   1/1     Running   0          104s
-lecture5-web-7f867c76d-mzw5z   1/1     Running   0          4s    <- NEW replacement pod
-lecture5-web-7f867c76d-ss8pw   1/1     Running   0          65s
-lecture5-web-7f867c76d-tpsh2   1/1     Running   0          65s
-lecture5-web-7f867c76d-wtstl   1/1     Running   0          104s
+lecture5-web-7f867c76d-mzw5z   1/1     Running   0          28m
+lecture5-web-7f867c76d-qlvp5   1/1     Running   0          17s   <- NEW replacement pod
+lecture5-web-7f867c76d-ss8pw   1/1     Running   0          29m
+lecture5-web-7f867c76d-tpsh2   1/1     Running   0          29m
+lecture5-web-7f867c76d-wtstl   1/1     Running   0          29m
 ```
 
-**After healing (fully recovered):**
+![During healing](Screenshots/self-healing-during.png)
+
+**Fully recovered:**
+
 ```
 NAME                           READY   STATUS    RESTARTS   AGE
-lecture5-web-7f867c76d-7tcr9   1/1     Running   0          113s
-lecture5-web-7f867c76d-mzw5z   1/1     Running   0          13s
-lecture5-web-7f867c76d-ss8pw   1/1     Running   0          74s
-lecture5-web-7f867c76d-tpsh2   1/1     Running   0          74s
-lecture5-web-7f867c76d-wtstl   1/1     Running   0          113s
+lecture5-web-7f867c76d-mzw5z   1/1     Running   0          29m
+lecture5-web-7f867c76d-qlvp5   1/1     Running   0          84s
+lecture5-web-7f867c76d-ss8pw   1/1     Running   0          30m
+lecture5-web-7f867c76d-tpsh2   1/1     Running   0          30m
+lecture5-web-7f867c76d-wtstl   1/1     Running   0          31m
 ```
 
-Pod `5rlqn` was replaced by `mzw5z` within **4 seconds**. The deployment stayed at 5 replicas throughout with zero manual intervention.
+![After healing](Screenshots/self-healing-after.png)
+
+Pod `7tcr9` was replaced by `qlvp5` within **17 seconds**. The deployment stayed at 5 replicas throughout with zero manual intervention.
 
 ### Why Self-Healing is Important
 
