@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
       - name: web
-        image: merabro/lecture5-webapp:v1.0
+        image: griboloski/lecture5-webapp:v1.0
         ports:
         - containerPort: 5000
           name: http

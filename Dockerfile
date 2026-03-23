@@ -8,15 +8,22 @@
 
 # STEP 1: Start with official Python image
 # ----------------------------------------------------------
-# We use the slim variant for smaller size (~150MB vs ~900MB)
-FROM python:3.11-slim
+# We use Alpine for minimal image size (~50MB vs ~150MB for slim)
+FROM python:3.11-alpine
 
 # STEP 2: Set the working directory
 # ----------------------------------------------------------
 # All subsequent commands run from /app
 WORKDIR /app
 
-# STEP 3: Copy and install dependencies FIRST
+# STEP 3: Install system dependencies required for psycopg2-binary
+# ----------------------------------------------------------
+# psycopg2-binary bundles its own libpq on Alpine (musllinux wheel).
+# We only need the libpq runtime library; no compiler required
+# since we use the pre-built binary wheel.
+RUN apk add --no-cache libpq
+
+# STEP 4: Copy and install dependencies FIRST
 # ----------------------------------------------------------
 # Why separate? Docker layer caching!
 # If requirements.txt hasn't changed, this layer is cached
