@@ -1,46 +1,14 @@
 # Lecture 5: Docker & Kubernetes for Scalable Deployment
 
-**DevOps for Cyber-Physical Systems (HS 2026)**
-
 **Forked Repository:** https://github.com/griboloski/lecture5-dockerk8s-demo
 
 **Docker Hub Username:** `griboloski`
 
 ---
 
-## Table of Contents
-- [Setup](#setup)
-- [Task 1a: Add Adminer Service](#task-1a-add-adminer-service)
-- [Task 1b: Change Base Image to Alpine](#task-1b-change-base-image-to-alpine)
-- [Task 2a: Image Tagging and Registry](#task-2a-image-tagging-and-registry)
-- [Task 2b: Container Inspection](#task-2b-container-inspection)
-- [Task 3a: Deploy to Kubernetes](#task-3a-deploy-to-kubernetes)
-- [Task 3b: Scale and Test Load Balancing](#task-3b-scale-and-test-load-balancing)
-- [Task 3c: Self-Healing](#task-3c-self-healing)
-
----
-
-## Setup
-
-Prerequisites installed:
-- Docker Desktop 28.5.1 (Kubernetes enabled via Docker Desktop settings)
-- kubectl v1.34.1
-- Python 3.12
-
-Clone and run:
-```bash
-git clone https://github.com/griboloski/lecture5-dockerk8s-demo .
-docker compose up -d
-# App available at http://localhost:5000
-```
-
----
-
 ## Task 1a: Add Adminer Service
 
-### What was changed
-
-Added an `adminer` service to `docker-compose.yml` following the same pattern as the existing services:
+Added an `adminer` service to `docker-compose.yml`:
 
 ```yaml
 adminer:
@@ -57,15 +25,7 @@ adminer:
   restart: unless-stopped
 ```
 
-### Testing
-
-```bash
-docker compose up -d
-# Open http://localhost:8080
-# Login: System=PostgreSQL, Server=db, Username=taskuser, Password=taskpass, Database=taskdb
-```
-
-Adminer at http://localhost:8080 — tasks table structure in taskdb:
+After `docker compose up -d`, Adminer is reachable at http://localhost:8080:
 
 ![Adminer tasks table](Screenshots/adminer-tasks.png)
 
@@ -73,52 +33,25 @@ Adminer at http://localhost:8080 — tasks table structure in taskdb:
 
 ## Task 1b: Change Base Image to Alpine
 
-### What was changed
+Changed `FROM python:3.11-slim` to `FROM python:3.11-alpine` in the Dockerfile. Alpine needs `libpq` as a runtime dependency; no compiler toolchain is required since `psycopg2-binary` ships a pre-built musllinux wheel.
 
-Modified `Dockerfile` to use `python:3.11-alpine` instead of `python:3.11-slim`.
-
-**Key difference:** Alpine uses `apk` instead of `apt-get` and uses musl libc instead of glibc. Since `psycopg2-binary` ships a musllinux pre-built wheel, only the `libpq` runtime library is needed.
-
+Added before `pip install`:
 ```dockerfile
-FROM python:3.11-alpine
-
-WORKDIR /app
-
-# Only libpq runtime needed -- psycopg2-binary uses pre-built musllinux wheel
 RUN apk add --no-cache libpq
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY app.py .
-COPY templates/ templates/
-COPY assets/ assets/
-
-EXPOSE 5000
-CMD ["python", "app.py"]
 ```
 
 ### Size Comparison
 
-```
-REPOSITORY   TAG       SIZE
-task-app     alpine    128MB
-task-app     slim      232MB
-```
+| Image | Size |
+|-------|------|
+| `task-app:slim` | 232MB |
+| `task-app:alpine` | 128MB |
 
-**Alpine is 45% smaller** (128MB vs 232MB).
-
-### Build Issues Encountered
-
-**First attempt:** Added `gcc musl-dev postgresql-dev` for psycopg2 compilation. This pulled in 45 packages including LLVM/Clang, resulting in a **1.04GB** image — larger than slim!
-
-**Fix:** Realized `psycopg2-binary` ships a pre-built `musllinux_1_1_x86_64` wheel for Alpine. Only `libpq` (runtime shared library) is needed. Removing the build toolchain reduced the image to **128MB**.
+Alpine is ~45% smaller. Initially I installed `gcc musl-dev postgresql-dev` which bloated the image to 1.04GB — removing those and relying on the binary wheel fixed it.
 
 ---
 
 ## Task 2a: Image Tagging and Registry
-
-### Commands Used
 
 ```bash
 docker build -t task-app:v1.0 .
@@ -126,50 +59,26 @@ docker tag task-app:v1.0 griboloski/lecture5-webapp:v1.0
 docker push griboloski/lecture5-webapp:v1.0
 ```
 
-**Docker Hub image:** https://hub.docker.com/r/griboloski/lecture5-webapp
-
 ![Docker Hub](Screenshots/dockerhub.png)
 
 ---
 
 ## Task 2b: Container Inspection
 
-### `docker compose logs web`
-
-**What it shows:** Streams the stdout/stderr output from the `web` container — Flask startup messages, incoming HTTP request logs, errors, and debug output. Useful for diagnosing application issues without exec-ing into the container.
-
-### `docker inspect lecture5-web`
-
-**What it shows:** Returns a detailed JSON object with the container's full configuration and runtime state, including:
-- Container ID, image SHA, creation time
-- Running state (PID, start time, exit code)
-- Network settings (IP address, MAC address, connected networks)
-- Volume mounts (e.g., `app.py` and `templates/` mounted read-only)
-- Environment variables (DB_HOST, DB_USER, REDIS_HOST, etc.)
-- Restart policy (`unless-stopped`)
-- Port bindings (`5000/tcp -> 0.0.0.0:5000`)
-
-Useful for debugging networking issues or verifying configuration is applied correctly.
-
-### `docker stats`
-
-**What it shows:** A live, updating table of real-time resource usage for all running containers: CPU%, memory usage vs limit, network I/O (bytes sent/received), and block I/O (disk reads/writes). Useful for identifying resource-hungry containers or memory leaks.
+- **`docker compose logs web`** — Shows stdout/stderr of the web container (Flask startup, request logs, errors).
+- **`docker inspect lecture5-web`** — Returns full container metadata as JSON: network config, mounts, env vars, restart policy, port bindings.
+- **`docker stats`** — Live resource usage per container: CPU%, memory, network I/O, block I/O.
 
 ---
 
 ## Task 3a: Deploy to Kubernetes
 
-### Steps
-
 ```bash
-# Kubernetes enabled via Docker Desktop Settings -> Kubernetes -> Enable Kubernetes
 kubectl apply -f k8s-backend.yaml
 kubectl apply -f k8s-web.yaml
 ```
 
-`k8s-web.yaml` was updated to use `griboloski/lecture5-webapp:v1.0` (our Docker Hub image).
-
-App accessible at `http://localhost` (port 80 via LoadBalancer, Docker Desktop assigns `localhost` as external IP).
+Updated `k8s-web.yaml` to reference `griboloski/lecture5-webapp:v1.0`. Kubernetes was enabled via Docker Desktop, so the LoadBalancer service exposes the app at `http://localhost`.
 
 ![kubectl get pods](Screenshots/kuberctl-pods.png)
 
@@ -179,56 +88,47 @@ App accessible at `http://localhost` (port 80 via LoadBalancer, Docker Desktop a
 
 ## Task 3b: Scale and Test Load Balancing
 
-### Commands
-
 ```bash
 kubectl scale deployment lecture5-web --replicas=5
-PYTHONIOENCODING=utf-8 python test_load_balancing.py
+python test_load_balancing.py
 ```
-
-### Load Balancing Test Output
 
 ![Load balancing test](Screenshots/load-balancing.png)
 
-### How Kubernetes Distributes Traffic
-
-Kubernetes distributes traffic using a **Service** object (`lecture5-web-service` of type LoadBalancer). The Service maintains a list of healthy pod endpoints and uses **kube-proxy** to implement load balancing via iptables/IPVS rules on each node. When a request arrives at the Service's virtual IP, kube-proxy randomly selects one of the backing pod endpoints to forward it to. The endpoint list is automatically updated by the Endpoints controller as pods start, stop, or fail readiness probes, ensuring traffic only reaches ready pods even during rolling updates.
+**How does Kubernetes distribute traffic?**
+The `lecture5-web-service` (type LoadBalancer) maintains a list of pod endpoints. kube-proxy programs iptables rules that randomly distribute incoming connections across all ready pods. The endpoint list updates automatically as pods come and go.
 
 ---
 
 ## Task 3c: Self-Healing
 
-**Before deletion** (5 pods running):
+**Before** — 5 pods running:
 
 ![Before deletion](Screenshots/self-healing-before.png)
 
-**Delete a pod:**
+**Deleted pod `7tcr9`:**
 ```bash
 kubectl delete pod lecture5-web-7f867c76d-7tcr9
 ```
 
-**During healing** — replacement pod `qlvp5` already Running at 17s:
+**During** — replacement pod `qlvp5` already running after a few seconds:
 
 ![During healing](Screenshots/self-healing-during.png)
 
-**Fully recovered:**
+**After** — back to 5/5:
 
 ![After healing](Screenshots/self-healing-after.png)
 
-Pod `7tcr9` was replaced by `qlvp5` within seconds. The deployment stayed at 5 replicas throughout with zero manual intervention.
-
-### Why Self-Healing is Important
-
-Self-healing is critical because pods can fail unexpectedly due to OOM kills, application crashes, node hardware failures, or OS-level issues. Kubernetes' **ReplicaSet controller** continuously reconciles the actual running pod count against the desired replica count and automatically creates replacement pods when a deficit is detected. This guarantees service availability without any manual operator intervention, meaning a 5-replica deployment automatically stays at 5 replicas even under failure conditions — a crucial property for production deployments of cyber-physical systems where downtime can have real-world consequences.
+**Why is self-healing important?**
+The ReplicaSet controller continuously reconciles actual vs desired pod count. When a pod is killed or crashes, it gets replaced automatically. This keeps the service available without manual intervention, which is essential for production systems.
 
 ---
 
-## Issues Encountered and Solutions
+## Issues Encountered
 
 | Issue | Solution |
 |-------|----------|
-| Alpine image was 1.04GB (larger than slim) | Removed unnecessary build tools; only `libpq` runtime needed since psycopg2-binary uses a pre-built musllinux wheel |
-| `docker login` non-interactive in bash | Logged in via Docker Desktop GUI instead |
-| Kubernetes not configured after enabling | Had to click "Apply & Restart" in Docker Desktop settings and wait ~2 min |
-| `test_load_balancing.py` pointed to minikube URL (port 63501) | Updated `SERVICE_URL` to `http://localhost/info` for Docker Desktop LoadBalancer |
-| UnicodeEncodeError with emoji in Python on Windows | Set `PYTHONIOENCODING=utf-8` environment variable |
+| Alpine image bloated to 1.04GB with build tools | Only `libpq` needed; `psycopg2-binary` has a pre-built musllinux wheel |
+| `test_load_balancing.py` URL pointed to minikube port | Changed `SERVICE_URL` to `http://localhost/info` for Docker Desktop |
+| Kubernetes kubeconfig not created | Needed "Apply & Restart" in Docker Desktop settings |
+| Python emoji UnicodeEncodeError on Windows | Set `PYTHONIOENCODING=utf-8` |
